@@ -42,16 +42,16 @@
     console.log('数据then4', value)
     return 'then5'
   }).then().then(
-    value => { console.log('then6:', value) }
+    value => { console.log('then5:', value) }
   )
   ```
 
 - 自己实现执行结果：
 
-   >![selfPromiseResult](./img/selfPromiseResult.png)
+   >![selfPromiseResult](./img/promiseB.png)
 - promise 执行的结果：
 
-   > ![promiseResult](./img/promiseResult.png)
+   > ![promiseResult](./img/promise.png)
 
 ## 实现思路
 
@@ -206,14 +206,14 @@
 8. `pro3.then(onFulfilled)`触发（我之前的思路一直是卡在步骤7结束）。***返回新的promise pro6*** ，判断pro3的状态，由步骤6可知，不通过：将pro3的onFulfilled-> `(value => {console.log('数据then3', value)return 'then4'})` 和pro6的resolve存到pro3的asyncObj中,即此时`pro3.asyncObj={onfulfilled:pro3.onFulfilled,resolve:pro6.resolve}` ,返回pro6,执行 `pro6.then(onFulfilled)` 步骤8结束。
 9. `pro6.then(onFulfilled)`触发，***返回新的promise pro7*** ,判断pro6的状态，和步骤7中pro4对于状态的判断一致，不通过：将pro6的onfulfilled->`value=>{console.log('数据then4', value)return 'then5'}`和pro7的resolve存到pro6的asyncObj中，即此时 `pro6.asyncObj={onfulfilled:pro6.onFulfilled,resolve:pro7.resolve}`,返回pro7,执行`pro7.then(onFulfilled)`，步骤9结束
 10. `pro7.then(onFulfilled)`触发，***返回新的promise pro8*** ,判断pro7的状态，和步骤7中pro4对于状态的判断一致，不通过：将pro7的onfulfilled->`undefined`和pro8的resolve存到pro7的asyncObj中，即此时 `pro7.asyncObj={onfulfilled:pro7.onFulfilled,resolve:pro8.resolve}`,返回pro8,执行`pro8.then(onFulfilled)`，步骤10结束
-11. `pro8.then(onFulfilled)`触发，***返回新的promise pro9*** ,判断pro8的状态，和步骤7中pro4对于状态的判断一致，不通过：将pro8的onfulfilled->`value => {console.log('then6:', value) }`和pro9的resolve存到pro8的asyncObj中，即此时 `pro8.asyncObj={onfulfilled:pro8.onFulfilled,resolve:pro9.resolve}`,返回pro9,因为pro9没有then,所以 ***没有创建新的pro10*** ，promise chain的then或者说同步过程结束，执行promise chain 以后的逻辑，直到参数promise,即pro4的resolve被触发，才继续执行promise chain,步骤11结束。
+11. `pro8.then(onFulfilled)`触发，***返回新的promise pro9*** ,判断pro8的状态，和步骤7中pro4对于状态的判断一致，不通过：将pro8的onfulfilled->`value => {console.log('then5:', value) }`和pro9的resolve存到pro8的asyncObj中，即此时 `pro8.asyncObj={onfulfilled:pro8.onFulfilled,resolve:pro9.resolve}`,返回pro9,因为pro9没有then,所以 ***没有创建新的pro10*** ，promise chain的then或者说同步过程结束，执行promise chain 以后的逻辑，直到参数promise,即pro4的resolve被触发，才继续执行promise chain,步骤11结束。
 12. 致此，所有的then都触发了一遍，执行完成以后总共有 ***6个显式then（每个then都会创建新的promise）+1个初始promise+1个参数promise+1个隐式then(参数promise的then会隐式执行创建一个新的promise)=9个promise***，从上面步骤可得 ***then的执行顺序为：1，2，4，3，6，7，8***  异步之前的前两个promise已经执行完毕, 当前执行的 ***resolve情况为：1，2，3*** ，从参数promise即pro4，触发以后，后面逻辑中的 ***promise.asyncObj中都存储了本promise的onfulfilled和该then返回的新promise的resolve***。需要特别提醒一下的是 ***pro3的asyncObj中存储的是pro的onfulfiled和pro6的resolve，因为pro3.then创建的是pro6*** 。同时，***pro7的asyncObj中存的onfulfilled是undefined***。定时器完成，pro4.resolve('then3')进入队列，等待主栈逻辑执行完毕即触发，步骤12结束
 13. `pro4.resolve('then3')`触发，判断传入的值是否为promise,值'then3'不是promise：pro4.value改变为pro4.resolve参数'then3',pro4状态改变,执行setTimeout里的代码，由步骤7可知 `pro4.asyncObj={onfulfilled:pro3.resolve,resolve:pro5.resolve}`。***先执行*** `let nnvalue = onfulfilled('then3')`,得到结果以后执行 `pro5.resolve(nnvalue)`,onfulfilled('then3')触发，onfulfiled为pro3.resolve，即执行 `pro3.resolve('then3')`，但是步骤13其实还没有结束，因为`pro5.resolve(nnvalue)`还没有执行。
 14. `pro3.resolve('then3')`触发，判断传入的值是否为promise,值'then3'不是promise：***pro3.value改变为pro3.resolve参数'then3',pro3状态改变*** ,执行setTimeout里的代码，由步骤8可知`pro3.asyncObj={onfulfilled:pro3.onFulfilled,resolve:pro6.resolve}`，但是其实这里还有一步，此时进入setTimeout就是异步执行了，而在步骤13中还有一步没有执行，哪里属于主逻辑，先去执行`pro5.resolve(nnvalue)`，因为`let nnvalue = onfulfilled('then3')===pro3.resolve('then3')`,pro3.resolve('then3')没有返回值，所以nnvalue=undefined, `pro5.resolve(undefined)`执行，判断参数undefined不是promise,修改pro5.value为undefined，修改状态，调出pro5.asyncObj,执行内部函数，由步骤7可知 `pro5.then`未被调用过，所以其asyncObj为空，***至此步骤13结束，但是步骤14仍在继续*** ，等主流程即步骤13结束以后，步骤14setTimeout内的函数开始执行-> let nnvalue=pro3.onFulfilled('then3')-> `let nnValue= (value => {console.log('数据then3', value)return 'then4'})('then3')`,得到nnvalue='then4',然后执行`pro3.asyncObj.resolve(nnvalue)`即 `pro6.resolve('then4')`,其实从13结束以后就开始了递归啦,步骤14结束。
 15. `pro6.resolve('then4')`触发，判断参数'then4'是否为promise,不是：修改 `pro4.value='then4'`,修改状态,执行定时器，等待主进程结束，执行定时器内部代码，由步骤9可得 `pro6.asyncObj={onfulfilled:pro6.onFulfilled,resolve:pro7.resolve}` ，pro6.onfulfilled('then4')->`(value=>{console.log('数据then4', value)return 'then5'})('then4')`，然后得到结果nnvalue为 'then5', 执行 `pro6.asyncObj.resolve('then5')`即 `pro7.resolve('then5')`,步骤15结束
 16. `pro7.resolve('then5')`触发，判断参数'then5'是不是promise,不是：修改`pro7.value='then5'`,修改状态，执行定时器，等待主进程结束，执行定时器内部代码，由步骤10可得 `pro7.asyncObj={onfulfilled:pro7.onFulfilled,resolve:pro8.resolve}` ，因为pro7.onFulfilled=undefined，执行`pro7.asyncObj.resolve('then5')`即`pro8.resolve('then5')`,步骤16结束
-17. `pro8.resolve('then5')`触发，判断参数'then5'是不是promise,不是：修改`pro8.value='then5'`,修改状态，执行定时器，等待主进程结束，执行定时器内部代码，由步骤11可得 `pro8.asyncObj={onfulfilled:pro8.onFulfilled,resolve:pro9.resolve}` ，执行pro8的onfulfilled->`(value => {console.log('then6:', value) })('then5')`，得到 `nnvalue=undefined` 执行`pro8.asyncObj.resolve('then6')`即`pro9.resolve('then6')`,步骤17结束
-18. `pro9.resolve('then6')`触发，判断参数'then6'是否为promise,不是：修改`pro9.value=undefined`,修改状态，执行定时器，因为pro9.then没有执行过，所以pro9.asyncObj没有值，所以结束。整个promise链也结束。
+17. `pro8.resolve('then5')`触发，判断参数'then5'是不是promise,不是：修改`pro8.value='then5'`,修改状态，执行定时器，等待主进程结束，执行定时器内部代码，由步骤11可得 `pro8.asyncObj={onfulfilled:pro8.onFulfilled,resolve:pro9.resolve}` ，执行pro8的onfulfilled->`(value => {console.log('then5:', value) })('then5')`，得到 `nnvalue=undefined` 执行`pro8.asyncObj.resolve(undefined)`即`pro9.resolve(undefined)`,步骤17结束
+18. `pro9.resolve(undefined)`触发，判断参数undefined是否为promise,不是：修改`pro9.value=undefined`,修改状态，执行定时器，因为pro9.then没有执行过，所以pro9.asyncObj没有值，所以结束。整个promise链也结束。
 
 ## 上面问题的答案
 
