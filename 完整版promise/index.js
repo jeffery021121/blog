@@ -1,3 +1,4 @@
+
 const STATUS = {
   PENDDING: 'PENDDING',
   FULLFILLED: 'FULLFILLED',
@@ -214,7 +215,7 @@ class Promise {
     })
   }
 }
-// promises-aplus-tests index.js
+
 Promise.defer = Promise.deferred = function () {
   let dfd = {};
   dfd.promise = new Promise((resolve, reject) => {
@@ -224,5 +225,52 @@ Promise.defer = Promise.deferred = function () {
   return dfd;
 }
 
+
+// let p1 = new Promise((resolve, reject) => {
+//   setTimeout(() => {
+//     reject(1)
+//   }, 50)
+// })
+
+// let p2 = new Promise((resolve, reject) => {
+//   setTimeout(() => {
+//     reject(22)
+//   }, 100)
+// })
+
+// let p3 = new Promise((resolve, reject) => {
+//   setTimeout(() => {
+//     resolve(3)
+//   }, 700)
+// })
+
+// Promise.race([p2, p3, p1])
+//   .then(res => console.log(222, res))
+//   .catch(err => console.log(11111, err)) // 1
+
 module.exports = Promise
 
+
+const pp1 = {
+  then(onFulfilled, onRejected) {
+    onFulfilled(new Promise((resolve1) => {
+      setTimeout(() => { resolve1(456) }, 2000)
+    }))
+    onFulfilled(new Promise((resolve1) => { resolve1(233333) }))
+    onRejected(789)
+  }
+}
+// new Promise((resolve) => {
+//   resolve(pp1)
+
+// })
+//   .then((res) => { console.log('then1', res)    return 'heheheh' })
+//   .then(res => { console.log('then2', res)    return new Promise((resolve, reject) => { setTimeout(() => { resolve('promise Hahaha') }, 3000) }) })
+//   .then(res => console.log('then3', res))
+
+new Promise(resolve => {
+  resolve(pp1)
+  // resolve(111)
+})
+  // .then(res => { return pp1 })
+  .then(res => console.log(111, res), reason => console.log(222, reason))

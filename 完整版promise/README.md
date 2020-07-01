@@ -17,10 +17,10 @@
 - promise有两个属性`value`,`reason`分别是then两个函数参数`onFullFilled`和`onRejected`的参数
 - resolve方法 将状态从`PENDDING`改为`FULLFILLED`，赋值value
 - reject方法  将状态从`PENDDING`改为`REJECTED`赋值reason
-- resolve不是类上的方法，只是构造器中的两个方法
+- resolve,reject不是类上的方法，只是构造器中的两个函数
 - then方法属于promise,可以链式调用，then方法接收两个函数参数 `onFullFilled` 和 `onRejected`. 状态为FULLFILLED时执行前者，REJECTED时执行后者
 - then方法的两个函数参数返回的值将作为下一个then方法参数函数的 value和reason
-- 并且then方法上注册的两个回调函数，是在微任务中执行的，意味着自己实现的时候，这俩方法的执行要放在`setTimeOut(fn，0)`的fn里执行。
+- then方法上注册的两个回调函数，是在微任务中执行的，意味着自己实现的时候，这俩方法的执行要放在`setTimeOut(fn，0)`的fn里执行。
 - 任何逻辑的执行都应该包裹try...catch并且catch的数据直接执行onRejected方法。
 - 如果onRejected方法返回了正常的数据，promise链仍然能执行下去。下一个onFullFilled函数可以接受本次的reason做value.
 - 解析then函数参数返回的数据可以提取一个resolvePromise方法，因为可能会写多遍
@@ -38,11 +38,11 @@
     - promises-aplus-tests 当前文件名
     - 可以根据提示修改不规范的地方
 - 额外的方法（都可以先把数组项包装成promise，使用promise.resolve）
-    - all 用一个数组记录所有的promise,执行成功以后把结果放到这个数组中，知道这个结果数组的长度和对应的参数数组长度一致，resolve结果数组。
+    - all 用一个数组记录所有的promise,执行成功以后把结果放到这个数组中，直到这个结果数组的长度和对应的参数数组长度一致，resolve结果数组。
     - race 利用resolve只能触发一次的特性所有promise共用一个resolve即可
   
 
-## 代码贴图以及发分析
+## 代码
 ```js
 
 const STATUS = {
@@ -103,8 +103,6 @@ class Promise {
         try {
           const then = value.then
           if (typeof then === 'function') {
-            // 默认是一个promise
-            // x.then(resolve, reject) //这里可能还会有promise，得深度解析
             then.call(
               value,
               y => {
@@ -273,4 +271,27 @@ Promise.defer = Promise.deferred = function () {
 
 module.exports = Promise
 
+```
+## 示例
+```js
+const pp1 = {
+  then(onFulfilled, onRejected) {
+    onFulfilled(new Promise((resolve1) => {
+      setTimeout(() => { resolve1(456) }, 2000)
+    }))
+    onFulfilled(new Promise((resolve1) => { resolve1(233333) }))
+    onRejected(789)
+  }
+}
+
+// 有助于理解resolve上面处理thenAble对象
+new Promise(resolve => {
+  resolve(pp1)
+})
+  .then(res => console.log(111, res), reason => console.log(222, reason))
+
+// 有助于理解then的函数参数返回了一个thenAble对象
+new Promise(resolve => { resolve(111) })
+  .then(res => { return pp1 })
+  .then(res => console.log(111, res), reason => console.log(222, reason))
 ```
