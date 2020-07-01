@@ -1,63 +1,81 @@
-
 const STATUS = {
   PENDDING: 'PENDDING',
   FULLFILLED: 'FULLFILLED',
   REJECTED: 'REJECTED',
 }
 
-const resolvePromise = (resolve, reject, x, promise2) => {
+const resolvePromise = (x, promise2, resolve, reject) => {
   let called = false // 该promise是否被解析过，主要针对thenable对象
   if (x === promise2) {
-    throw new Error('xxxxxxxxxxxxxxx')
+    reject(new TypeError(`TypeError: Chaining cycle detected for promise #<Promise>`))
   }
-  if (typeof x === 'object' || typeof x === 'function' && x != null) {
-    if (typeof x.then === 'function') {
-      // 默认是一个promise
-      // x.then(resolve, reject) //这里可能还会有promise，得深度解析
-      x.then(
-        value => {
-          if (called) return
-          called = true
-          resolvePromise(resolve, reject, value, promise2)
-        },
-        reason => {
-          if (called) return
-          called = true
-          reject(reason)
-        })
-      return
+  if ((typeof x === 'object' && x !== null) || typeof x === 'function') {
+    try {
+      const then = x.then
+      if (typeof then === 'function') {
+        // 默认是一个promise
+        // x.then(resolve, reject) //这里可能还会有promise，得深度解析
+        then.call(
+          x,
+          y => {
+            if (called) return
+            called = true
+            resolvePromise(y, promise2, resolve, reject)
+          },
+          reason => {
+            if (called) return
+            called = true
+            reject(reason)
+          })
+      } else {
+        resolve(x)
+      }
+    } catch (reason) {
+      if (called) return
+      called = true
+      reject(reason)
     }
+  } else {
+    resolve(x)
   }
-  resolve(x)
 }
 
 class Promise {
 
   constructor(excutor) {
-    this.value = ''
-    this.reason = ''
+    this.value = undefined
+    this.reason = undefined
     this.status = STATUS.PENDDING
     this.onFullfilledCallBacks = []
     this.onRejectedCallBacks = []
 
     const resolve = (value) => {
-
+      if (value instanceof Promise) return value.then(resolve, reject)
       let called = false
-      if (typeof value === 'object' || typeof value === 'function' && x != null) {
-        if (typeof value.then === 'function') {
-          // 默认是一个promise
-          // x.then(resolve, reject) //这里可能还会有promise，得深度解析
-          value.then(
-            nvalue => {
-              if (called) return
-              called = true
-              resolvePromise(resolve, reject, nvalue, () => { })
-            },
-            reason => {
-              if (called) return
-              called = true
-              reject(reason)
-            })
+      if ((typeof value === 'object' && value !== null) || typeof value === 'function') {
+        try {
+          const then = value.then
+          if (typeof then === 'function') {
+            // 默认是一个promise
+            // x.then(resolve, reject) //这里可能还会有promise，得深度解析
+            then.call(
+              value,
+              y => {
+                if (called) return
+                called = true
+                resolvePromise(y, this, resolve, reject)
+              },
+              reason => {
+                if (called) return
+                called = true
+                reject(reason)
+              })
+              return
+          }
+        } catch (reason) {
+          if (called) return
+          called = true
+          reject(reason)
           return
         }
       }
@@ -85,22 +103,31 @@ class Promise {
     }
   }
 
-  then = (
-    onFullfilled = (res) => res,
-    onRejected = reason => new Error(reason)
-  ) => {
+  then = (onFullfilled, onRejected) => {
+    onFullfilled = typeof onFullfilled == 'function' ? onFullfilled : v => v;
+    onRejected = typeof onRejected === 'function' ? onRejected : err => { throw err };
     const promise2 = new Promise((resolve, reject) => {
       if (this.status === STATUS.PENDDING) {
         this.onFullfilledCallBacks.push(() => {
           setTimeout(() => {
-            const x = onFullfilled(this.value)
-            resolvePromise(resolve, reject, x, promise2)
+            try {
+              const x = onFullfilled(this.value)
+              resolvePromise(x, promise2, resolve, reject)
+            } catch (error) {
+              reject(error)
+            }
+
           }, 0)
         })
         this.onRejectedCallBacks.push(() => {
           setTimeout(() => {
-            const x = onRejected(this.reason)
-            resolvePromise(resolve, reject, x, promise2)
+            try {
+              const x = onRejected(this.reason)
+              resolvePromise(x, promise2, resolve, reject)
+            } catch (error) {
+              reject(error)
+            }
+
           }, 0)
         })
         return
@@ -108,16 +135,24 @@ class Promise {
       if (this.status === STATUS.FULLFILLED) {
         setTimeout(
           () => {
-            const x = onFullfilled(this.value)
-            resolvePromise(resolve, reject, x, promise2)
+            try {
+              const x = onFullfilled(this.value)
+              resolvePromise(x, promise2, resolve, reject)
+            } catch (error) {
+              reject(error)
+            }
           }
           , 0)
       }
       if (this.status === STATUS.REJECTED) {
         setTimeout(
           () => {
-            const x = onRejected(this.reason)
-            resolvePromise(resolve, reject, x, promise2)
+            try {
+              const x = onRejected(this.reason)
+              resolvePromise(x, promise2, resolve, reject)
+            } catch (error) {
+              reject(error)
+            }
           }
           , 0)
       }
@@ -129,65 +164,65 @@ class Promise {
     return this.then(value => value, onRejected)
   }
 
+  finally = (fn) => {
+    const resolveFn = (value) => {
+      fn()
+      return value
+    }
+    const rejectFn = (reason) => {
+      fn()
+      throw reason
+    }
+    return this.then(resolveFn, rejectFn)
+  }
+
+
   static resolve = (value) => {
     return new Promise(resolve => resolve(value))
   }
-}
 
-const pp1 = {
-  then(onFulfilled, onRejected) {
-    onFulfilled(new Promise((resolve1) => {
-      setTimeout(() => {
-        resolve1(456)
-      }, 2000)
-    }))
-    onFulfilled(new Promise((resolve1) => {
-      resolve1(233333)
-    }))
-    onRejected(789)
-  }
-}
-
-new Promise((resolve) => {
-  resolve(pp1)
-  // resolve(new Promise(resolve=>{
-  //   setTimeout(()=>{resolve('creazy____resolve')},3000)
-  // }))
-})
-  .then((res) => {
-    console.log('then1', res)
-    return 'heheheh'
-  })
-  .then(res => {
-    console.log('then2', res)
+  static race = (arr) => {
+    if (!Array.isArray(arr)) throw new Error('argument must be array')
     return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        resolve('promise Hahaha')
-      }, 3000)
+      try {
+        for (let i = 0; i < arr.length; i++) {
+          Promise.resolve(arr[i]).then(resolve, reject)
+        }
+      } catch (error) {
+        reject(error)
+      }
     })
-  })
-  .then(res => console.log('then3', res))
-
-
-let p2 = new Promise(resolve => {
-  resolve(1111)
-}).then(() => {
-  const pp1 = {
-    then(onFulfilled, onRejected) {
-      onFulfilled(new Promise((resolve1) => {
-        setTimeout(() => {
-          resolve1(456)
-        }, 2000)
-      }))
-      onFulfilled(new Promise((resolve1) => {
-        resolve1(233333)
-      }))
-      onRejected(789)
-    }
   }
-  return pp1
-}).then((value) => {
-  console.log('fulfilled:----------', value)
-}, (reason) => {
-  console.log('rejected:-----------', reason)
-})
+
+  static all = (arr) => {
+    if (!Array.isArray(arr)) throw new Error('argument must be array')
+    let valueArr = []
+    let count = 0
+    return new Promise((resolve, reject) => {
+      try {
+        for (let i = 0; i < arr.length; i++) {
+          Promise.resolve(arr[i]).then((value) => {
+            valueArr[i] = value
+            if (++count === arr.length) {
+              resolve(valueArr)
+            }
+          }, reject)
+        }
+      } catch (error) {
+        reject(error)
+      }
+    })
+  }
+}
+// promises-aplus-tests index.js
+Promise.defer = Promise.deferred = function () {
+  let dfd = {};
+  dfd.promise = new Promise((resolve, reject) => {
+    dfd.resolve = resolve;
+    dfd.reject = reject;
+  });
+  return dfd;
+}
+
+module.exports = Promise
+
