@@ -8,5 +8,4 @@
 - 提交代码 `git push -u master` #第一次要加-u
 
 ### tips
-
-- 该部分配合 同步码云和github 食用更可口
+- 该部分配合 [同步码云和github](../同步码云和github/readme.md)食用更可口

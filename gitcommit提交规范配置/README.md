@@ -69,3 +69,9 @@
     }
   }
 ```
+
+## 使用方法
+
+- 正常添加代码 `git add .`
+- 执行 `npm run commit` 或者 `git cz` 根据提示填写即可
+- 习惯以后可以直接写commit指令，eg: `git commit -m 'docs: 添加readme'`
