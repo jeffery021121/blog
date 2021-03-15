@@ -1,4 +1,4 @@
-> 精简版promise,有些功能都没有实现，不删除只是为了纪念，不具有参考价值，想看实现请移步 [完整版promise](../完整版promise/readme.md)
+> 精简版promise,有些功能都没有实现，不删除只是为了纪念，不具有参考价值，想看实现请移步 [完整版promise](../完整版promise)
 
 # 简单 promise 的实现
 
