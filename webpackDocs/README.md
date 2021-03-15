@@ -4,4 +4,4 @@
 - webpack简单bundle分析
 - webpack工作流
 - webpack loader
-- 即将开始3
+- 即将开始remote
