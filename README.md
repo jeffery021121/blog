@@ -8,3 +8,4 @@
 - [完整版promise](./完整版promise)
 - [gitcommit提交规范配置](./gitcommit提交规范配置)
 - [webpack系列文章](./webpackDocs)
+- [算法小记](./算法小记)
