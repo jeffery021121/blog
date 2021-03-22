@@ -1,6 +1,7 @@
 # 手写promise
 
 > promise手写记录总结，只是记录了一些自己认为比较核心的知识点。方便以后快速复习。then中返回的promise只是珠子，resolve和reject才是执行的线。
+> 最近又有了新的理解，promise其实就是单项链表，then方法就是生成下一个promise,并且挂到当前promise的next（这里的next就是回调数组）中,resolve来执行下一个promise
 
 ## 详细知识点记录
 - a+规范地址 https://promisesaplus.com/
